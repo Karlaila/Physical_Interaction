@@ -9,13 +9,17 @@
 
 // Pin Definitions
 #define FLEX5V_PIN_SIG	A0
+#define FLEX5V_PIN_SIG_1  A1
+#define FLEX5V_PIN_SIG_2  A2
 
 // Global variables and defines
 int16_t mpu6050Ax, mpu6050Ay, mpu6050Az;
 int16_t mpu6050Gx, mpu6050Gy, mpu6050Gz;
 
 // object initialization
-Flex flex5v(FLEX5V_PIN_SIG);
+Flex flex5v_1(FLEX5V_PIN_SIG);
+Flex flex5v_2(FLEX5V_PIN_SIG_1);
+Flex flex5v_3(FLEX5V_PIN_SIG_2);
 MPU6050 mpu6050;
 
 
@@ -29,8 +33,9 @@ long time0;
 const double ol = 0.75, ne = 0.25;
 
 // evergy values
-int dE = 0, dEma = 0, dEa = 0, Eold = 0, Enew = 0;
-//int Es[] = {0,0,0,0,0};
+int dE[] = {0,0,0}, dEma[] = {0,0,0}, dEa[] = {0,0,0}, Eold[] = {0,0,0}, Enew[] = {0,0,0};
+int dE_full=0;
+Flex *flexes[] = {&flex5v_1, &flex5v_2, &flex5v_3};
 int counter = 0;
 int count = 4;
 
@@ -51,23 +56,37 @@ void setup()
 // Main logic of your circuit. It defines the interaction between the components you selected. After setup, it runs over and over again, in an eternal loop.
 void loop() 
 {
-    Enew = flex5v.read();
-    dE += abs(Enew-Eold);
+    // reading the flexes value and adding up the dEs
+    for(int i = 0; i<3; i++){
+       Enew[i] = flexes[i]->read();
+       dE[i] += abs(Enew[i]-Eold[i]);
+       Eold[i] = Enew[i];
+    }
+    
     counter += 1;
 
     if(counter >= count){
       counter = 0;
-      dEma = ol*dEma + ne*dE;
-      dE = 0;
+      dE_full = 0;
+      // changes for flexes are around 500; can be over thousaund though
+      for(int i = 0; i<3; i++){
+        dEma[i] = ol*dEma[i] + ne*dE[i];
+        dE_full += dEma[i];
+        dE[i] = 0;
+      }
     }
-    Eold = Enew;
     
     //Serial.print(F("flex5vVal: ")); 
-    Serial.print(Enew);Serial.print("\t");
+    Serial.print(Enew[0]);Serial.print("\t");
+    Serial.print(Enew[1]);Serial.print("\t");
+    Serial.print(Enew[2]);Serial.print("\t");
+    Serial.print(dEma[0]);Serial.print("\t");
+    Serial.print(dEma[1]);Serial.print("\t");
+    Serial.print(dEma[2]);Serial.print("\t");
     //Serial.print(F("flexdE: ")); 
     //Serial.print(dE);Serial.print("\t");
     //Serial.print(F("flexdEma: ")); 
-    Serial.println(dEma);
+    Serial.println(dE_full);
     
 
     // read MPU values
